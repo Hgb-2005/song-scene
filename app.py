@@ -23,7 +23,7 @@ def main():
         workspace.close()
         raise SystemExit(f'Port {args.port} is occupied. Close the older workspace or use --port {args.port+1}.')
     url=f'http://127.0.0.1:{server.server_port}/index.html'
-    print(f'Song & Scene V7: {url}',flush=True)
+    print(f'Song & Scene V8: {url}',flush=True)
     print(f'Data folder: {workspace.store.directory}',flush=True)
     print('Keep this window open. Ctrl+C stops the service.',flush=True)
     if args.open: threading.Timer(.5,lambda:webbrowser.open(url)).start()

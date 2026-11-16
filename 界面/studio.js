@@ -28,6 +28,7 @@ function renderBoard(){
 }
 function renderDoctor(){
   const rows=[['保存方式','本机磁盘数据库'],['需求 / 个人作品',`${app.data.projects.length} / ${app.data.works.length}`],['自动记录快照',`${app.data.snapshotCount||0} 份`],['FFmpeg 本机合成',app.data.capabilities.ffmpeg?'已就绪':'未找到'],['FFprobe 素材识别',app.data.capabilities.ffprobe?'已就绪':'未找到'],['歌词字幕',app.data.capabilities.subtitles?'可用':'当前版本未包含']];
+  rows.push(['数据文件夹',app.data.dataDirectory||'程序目录的 data 文件夹']);
   $('doctor').innerHTML=rows.map(([name,value])=>`<div class="doctor-row"><span>${name}</span><span>${esc(value)}</span></div>`).join('')+(app.data.backupWarning?`<p class="small-note">${esc(app.data.backupWarning)}</p>`:'');
 }
 app.render=()=>{if(app.page==='home')renderHome();else if(app.page==='board')renderBoard();else if(app.page==='library')app.library.render();else if(app.page==='assets')app.library.renderAssets();else if(app.page==='editor')app.editor.sync();else if(app.page==='settings'){renderDoctor();loadSnapshots().catch(error=>toast(error.message));}$('navProjectCount').textContent=app.data.projects.length;};

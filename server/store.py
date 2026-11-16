@@ -68,14 +68,16 @@ def normalize(kind, data, previous=None):
             a, b = number(row.get('start', 0), high=120), number(row.get('end', 5), high=120)
             if b <= a:
                 raise AppError('每段画面的结束时间必须晚于开始时间')
-            scenes.append({'id': row.get('id') if valid_id(row.get('id')) else ident('s'), 'start': a, 'end': b, 'lyric': text(row.get('lyric', ''), 120), 'intent': text(row.get('intent', ''), 500), 'assetId': text(row.get('assetId', ''), 100), 'offset': number(row.get('offset', 0))})
+            scenes.append({'id': row.get('id') if valid_id(row.get('id')) else ident('s'), 'start': a, 'end': b, 'lyric': text(row.get('lyric', ''), 120), 'intent': text(row.get('intent', ''), 500), 'assetId': text(row.get('assetId', ''), 100), 'offset': number(row.get('offset', 0)), 'cropX':number(row.get('cropX', .5),0,1), 'cropY':number(row.get('cropY', .5),0,1)})
+        from .composition import caption_settings
+        caption = caption_settings(data.get('caption'))
         output = text(data.get('outputWorkId', ''), 100)
         if status == 'done' and not output:
             raise AppError('请先关联或导入成片，再标记完成')
         history = previous.get('history', [])[:]
         if not previous or status != previous.get('status'):
             history.append({'at': now(), 'status': status})
-        return {'song': text(data.get('song', ''), 80, True), 'singer': text(data.get('singer', ''), 80), 'feeling': text(data.get('feeling', ''), 300), 'reference': text(data.get('reference', ''), 100), 'status': status, 'sourceId': text(data.get('sourceId', ''), 100), 'clipStart': start, 'clipEnd': end, 'scenes': scenes, 'lyricDraft':text(data.get('lyricDraft',''),6000), 'outputWorkId': output, 'history': history[-100:]}
+        return {'song': text(data.get('song', ''), 80, True), 'singer': text(data.get('singer', ''), 80), 'feeling': text(data.get('feeling', ''), 300), 'reference': text(data.get('reference', ''), 100), 'status': status, 'sourceId': text(data.get('sourceId', ''), 100), 'clipStart': start, 'clipEnd': end, 'scenes': scenes, 'caption':caption, 'lyricDraft':text(data.get('lyricDraft',''),6000), 'outputWorkId': output, 'history': history[-100:]}
     if kind == 'work':
         group = data.get('group', 'warm')
         if group not in ['warm', 'travel', 'memory', 'quiet']:

@@ -1,0 +1,38 @@
+{
+  "version": "8.0.0",
+  "pythonTests": 14,
+  "nodeTests": 7,
+  "skippedTests": 0,
+  "htmlIds": 167,
+  "testedPython": [
+    "3.10.9",
+    "3.14.10"
+  ],
+  "browserWidths": [
+    320,
+    390,
+    1366
+  ],
+  "browserConsoleErrors": 0,
+  "desktop": {
+    "capabilities": {
+      "ffmpeg": true,
+      "ffprobe": true,
+      "subtitles": true
+    },
+    "pythonOnPath": false,
+    "ffmpegOnPath": false,
+    "duplicateExit": 0,
+    "renderStatus": "done",
+    "renderVideoBytes": 249498,
+    "desktopRuntimePython": "3.14.10",
+    "upgradePreservedDatabase": true,
+    "upgradePreservedProjectAndWork": true,
+    "windowedErrorsReturnJSON": true,
+    "uninstallRemovedApplication": true,
+    "uninstallPreservedAllRecordsAndMedia": true
+  },
+  "externalParticipantsTested": 0,
+  "realDeviceMobileTested": false,
+  "signedInstaller": false
+}

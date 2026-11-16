@@ -8,7 +8,7 @@ import mimetypes
 import re
 import secrets
 import shutil
-import traceback
+import logging
 
 from .store import AppError, Store, ident, now
 from .media import Media
@@ -36,7 +36,7 @@ class Workspace:
         self.token=secrets.token_urlsafe(32)
 
     def state(self):
-        return {**self.store.state(),'workspaceId':self.identity,'stockWorks':self.media.builtin_works(),'assets':self.media.assets(),'token':self.token,'version':7,'capabilities':{'ffmpeg':bool(self.media.ffmpeg),'ffprobe':bool(self.media.ffprobe),'subtitles':self.media.has_subtitles},'snapshotCount':len(list((self.store.directory/'backups').glob('*.json')))}
+        return {**self.store.state(),'workspaceId':self.identity,'stockWorks':self.media.builtin_works(),'assets':self.media.assets(),'token':self.token,'version':8,'application':'songscene','dataDirectory':str(self.store.directory),'capabilities':{'ffmpeg':bool(self.media.ffmpeg),'ffprobe':bool(self.media.ffprobe),'subtitles':self.media.has_subtitles},'snapshotCount':len(list((self.store.directory/'backups').glob('*.json')))}
 
     def project(self,item_id,deleted=False):
         result=self.store.get('project',item_id,deleted)
@@ -71,7 +71,7 @@ class Workspace:
 
 def make_server(workspace,port=8866):
     class Handler(BaseHTTPRequestHandler):
-        server_version='SongScene/7'
+        server_version='SongScene/8'
 
         def check_origin(self,write=False):
             host=self.headers.get('Host','')
@@ -256,7 +256,7 @@ def make_server(workspace,port=8866):
             except AppError as error: self.json({'error':str(error)},error.status)
             except (BrokenPipeError,ConnectionResetError,ConnectionAbortedError): pass
             except Exception:
-                traceback.print_exc()
+                logging.exception('Local workspace request failed')
                 try: self.json({'error':'操作未完成，请检查本机服务窗口；你的原始素材不会被覆盖。'},500)
                 except (BrokenPipeError,ConnectionResetError): pass
 
@@ -268,7 +268,8 @@ def make_server(workspace,port=8866):
         def do_OPTIONS(self): self.json({'error':'仅支持同源本机访问'},405)
         def log_message(self,fmt,*args):
             if len(args)>1 and str(args[1]) not in ['200','201','202','206','304']:
-                super().log_message(fmt,*args)
+                # A windowed PyInstaller application has no sys.stderr.
+                logging.warning('Local HTTP %s %s',args[1],self.command)
 
     server=ThreadingHTTPServer(('127.0.0.1',port),Handler)
     server.daemon_threads=True

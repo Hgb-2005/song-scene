@@ -15,6 +15,7 @@ import threading
 import time
 import unittest
 import wave
+from unittest.mock import patch
 
 from server.http import Workspace,make_server
 from server.store import AppError,Store,ident
@@ -82,11 +83,14 @@ class ApiTests(unittest.TestCase):
 
     def test_01_state_origin_and_private_paths(self):
         state=self.request('GET','/api/state')
-        self.assertEqual(state['version'],7);self.assertEqual(len(state['stockWorks']),10)
+        self.assertEqual(state['version'],8);self.assertEqual(len(state['stockWorks']),10)
         self.request('POST','/api/projects',{'song':'不应保存'},headers={'Origin':'https://other.example'},expected=403)
         self.request('POST','/api/projects',{'song':'不应保存'},headers={'X-Songscene-Token':''},expected=403)
         self.request('GET','/data/workspace.sqlite3',expected=404)
         self.request('GET','/界面/../../data/workspace.sqlite3',expected=404)
+        with patch('sys.stderr',None):
+            self.request('POST','/api/projects',{'song':''},expected=400)
+            self.request('GET','/data/workspace.sqlite3',expected=404)
 
     def test_02_edit_archive_restore_and_revision(self):
         project=self.project()

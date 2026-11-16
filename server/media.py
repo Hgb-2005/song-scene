@@ -9,6 +9,7 @@ import shutil
 import subprocess
 
 from .store import AppError, ident
+from desktop.engine import find_tools
 
 PROTOCOLS = ['-protocol_whitelist', 'file,pipe']
 FORMATS = ['-format_whitelist', 'mov,mp3,wav,flac,ogg,matroska,avi,aac,image2,jpeg_pipe,png_pipe,webp_pipe']
@@ -24,8 +25,7 @@ class Media:
     def __init__(self, root, store):
         self.root = Path(root).resolve()
         self.store = store
-        self.ffmpeg = shutil.which('ffmpeg')
-        self.ffprobe = shutil.which('ffprobe')
+        self.ffmpeg, self.ffprobe = find_tools()
         self.has_subtitles = False
         if self.ffmpeg:
             try:

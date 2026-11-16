@@ -5,4 +5,9 @@ __pycache__/
 .env
 .env.*
 artifacts/
+build/
+dist/
+*.spec
+*.exe
+*.log
 .DS_Store

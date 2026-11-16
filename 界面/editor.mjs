@@ -1,15 +1,18 @@
 import {$,esc,icon,time,imageUrl,api,upload,busy,toast,confirmAction,downloadApi,downloadBlob} from './client.mjs';
 import {statuses,splitScenes,planIssues,projectContent} from './core.mjs';
+import {initPreview} from './preview.mjs';
+import {captionSettings} from './composition.mjs';
 
 export function initEditor(app){
   let working=null,baseline='',dirty=false,sourceElement=$('sourceVideo'),previewing=false,sceneUploadId='';
+  const composition=initPreview(app,()=>working,changed,()=>{sourceElement.pause();previewing=false;});
   const clone=value=>JSON.parse(JSON.stringify(value));
   const activeJob=()=>working&&app.data.jobs.find(j=>j.projectId===working.id&&['queued','running'].includes(j.status));
   const key=id=>`songscene.v7.editor.${app.data.workspaceId}.${id}`;
   function changed(){
     if(!working)return;dirty=projectContent(working)!==baseline;$('editorSaveState').textContent=dirty?'有修改尚未保存':'方案已保存到工作目录';
     try{if(dirty)localStorage.setItem(key(working.id),JSON.stringify({baseRevision:working.revision,value:working}));}catch{$('editorSaveState').textContent='有修改尚未保存，请点击保存方案';}
-    validation();
+    validation();composition.refresh();
   }
   function validation(){
     if(!working)return;const issues=planIssues(working,app.data.assets),duration=working.clipEnd-working.clipStart;
@@ -35,7 +38,7 @@ export function initEditor(app){
     const options=app.data.assets.filter(a=>['image','video'].includes(a.kind)).sort((a,b)=>Number(a.stock)-Number(b.stock)).map(a=>`<option value="${esc(a.id)}">${a.kind==='image'?'图片':'视频'} · ${esc(a.name)}${a.stock?' · 内置参考':''}</option>`).join('');
     $('sceneList').innerHTML=working.scenes.map((scene,index)=>{
       const asset=app.asset(scene.assetId),thumb=asset?(asset.kind==='image'?asset.url:imageUrl(app,asset.posterId)):'界面/mark.svg';
-      return `<article class="scene-card" data-row="${esc(scene.id)}"><div class="scene-image"><img class="scene-thumb" src="${esc(thumb)}" alt="第${index+1}段参考画面"><span>${asset?asset.kind==='image'?'静态图片':'视频素材':'待选画面'}</span></div><div class="scene-body"><div class="scene-top"><strong>画面 ${String(index+1).padStart(2,'0')}</strong><label>从<input data-key="start" aria-label="第${index+1}段开始时间" type="number" min="0" max="120" step="0.1" value="${scene.start}"></label><label>到<input data-key="end" aria-label="第${index+1}段结束时间" type="number" min="0.1" max="120" step="0.1" value="${scene.end}">秒</label><button class="icon-button" data-remove-scene="${esc(scene.id)}" aria-label="移除第${index+1}段画面">${icon('close')}</button></div><div class="scene-fields"><label>这一句歌词<input data-key="lyric" aria-label="第${index+1}段歌词" maxlength="120" value="${esc(scene.lyric)}" placeholder="也可以只写段落名称"></label><div class="scene-material"><label>搭配的画面<select data-key="assetId" aria-label="第${index+1}段画面素材"><option value="">请选择图片或视频</option>${options}</select></label><button class="text-button" data-upload-scene="${esc(scene.id)}">＋ 导入</button></div><label class="scene-description">为什么用这个画面<input data-key="intent" maxlength="500" aria-label="第${index+1}段画面想法" value="${esc(scene.intent)}" placeholder="例如：在这句唱到远方时，画面切到伸向山里的路"></label></div><label class="scene-offset">视频素材从第<input type="number" data-key="offset" aria-label="第${index+1}段素材起点" min="0" step="0.1" value="${scene.offset||0}">秒开始 <small>图片可忽略；短视频不足时会循环。</small></label></div></article>`;
+      return `<article class="scene-card" data-row="${esc(scene.id)}"><div class="scene-image"><img class="scene-thumb" src="${esc(thumb)}" alt="第${index+1}段参考画面"><span>${asset?asset.kind==='image'?'静态图片':'视频素材':'待选画面'}</span></div><div class="scene-body"><div class="scene-top"><strong>画面 ${String(index+1).padStart(2,'0')}</strong><button class="text-button" data-preview-scene="${esc(scene.id)}">预览此段</button><label>从<input data-key="start" aria-label="第${index+1}段开始时间" type="number" min="0" max="120" step="0.1" value="${scene.start}"></label><label>到<input data-key="end" aria-label="第${index+1}段结束时间" type="number" min="0.1" max="120" step="0.1" value="${scene.end}">秒</label><button class="icon-button" data-remove-scene="${esc(scene.id)}" aria-label="移除第${index+1}段画面">${icon('close')}</button></div><div class="scene-fields"><label>这一句歌词<input data-key="lyric" aria-label="第${index+1}段歌词" maxlength="120" value="${esc(scene.lyric)}" placeholder="也可以只写段落名称"></label><div class="scene-material"><label>搭配的画面<select data-key="assetId" aria-label="第${index+1}段画面素材"><option value="">请选择图片或视频</option>${options}</select></label><button class="text-button" data-upload-scene="${esc(scene.id)}">＋ 导入</button></div><label class="scene-description">为什么用这个画面<input data-key="intent" maxlength="500" aria-label="第${index+1}段画面想法" value="${esc(scene.intent)}" placeholder="例如：在这句唱到远方时，画面切到伸向山里的路"></label></div><label class="scene-offset">视频素材从第<input type="number" data-key="offset" aria-label="第${index+1}段素材起点" min="0" step="0.1" value="${scene.offset||0}">秒开始 <small>图片可忽略；短视频不足时会循环。</small></label></div></article>`;
     }).join('');
     for(const scene of working.scenes){const select=document.querySelector(`[data-row="${CSS.escape(scene.id)}"] [data-key="assetId"]`);if(select)select.value=scene.assetId;}
     validation();lockControls();
@@ -54,7 +57,7 @@ export function initEditor(app){
   function lockControls(){
     const locked=!!activeJob();
     document.querySelectorAll('#page-editor input,#page-editor textarea,#page-editor select,#page-editor [data-remove-scene],#page-editor [data-upload-scene],#projectSteps button').forEach(el=>el.disabled=locked);
-    for(const id of ['saveProject','uploadSourceButton','markStart','markEnd','generateScenes','useReferenceLyrics','addScene','openRender','importProjectOutput','linkOutput','archiveProject'])$(id).disabled=locked;
+    for(const id of ['saveProject','uploadSourceButton','markStart','markEnd','generateScenes','useReferenceLyrics','addScene','openRender','importProjectOutput','linkOutput','archiveProject','resetCrop'])$(id).disabled=locked;
     $('openRender').disabled=locked||!app.data.capabilities.ffmpeg||!app.data.capabilities.ffprobe;
   }
   function draw(){
@@ -65,12 +68,12 @@ export function initEditor(app){
     const ref=app.works().find(w=>w.id===working.reference);
     let reference=document.getElementById('editorReference');if(!reference){reference=document.createElement('p');reference.id='editorReference';reference.className='small-note';document.querySelector('.basic-details').append(reference);}
     reference.textContent=ref?`参考作品：《${ref.title}》 · ${ref.artist}`:'还没有选择参考作品，可以到灵感片库挑一条。';
-    sourceOptions();drawSource();drawScenes();drawOutput();drawJob();changed();
+    sourceOptions();drawSource();drawScenes();drawOutput();drawJob();composition.refresh();changed();
   }
   async function load(id){
     if(app.page==='editor'&&working?.id!==id&&!(await canLeave()))return false;
     const project=app.data.projects.find(p=>p.id===id);if(!project){toast('这份需求不存在或已归档');return false;}
-    working=clone(project);baseline=projectContent(project);dirty=false;
+    composition.pause();working=clone(project);baseline=projectContent(project);dirty=false;composition.refresh(true);
     try{const cache=JSON.parse(localStorage.getItem(key(id)));if(cache?.baseRevision===project.revision&&Array.isArray(cache.value?.scenes)){working=cache.value;dirty=projectContent(working)!==baseline;if(dirty)toast('已找回这份需求尚未保存的浏览器草稿');}else if(cache?.value&&cache.baseRevision!==project.revision){toast('磁盘内容已更新，旧浏览器草稿已保留，可导出查看',()=>downloadBlob(new Blob([JSON.stringify(cache.value,null,2)],{type:'application/json'}),'一歌一景-未保存草稿.json'),'导出旧草稿');}}catch{ /* Keep the disk version when local cache is malformed. */ }
     await app.navigate('editor',true);draw();return true;
   }
@@ -105,8 +108,9 @@ export function initEditor(app){
   $('sourceSelect').addEventListener('change',()=>{working.sourceId=$('sourceSelect').value;const source=app.asset(working.sourceId);working.clipStart=0;working.clipEnd=Math.min(30,source?.duration||30);drawSource();changed();});
   for(const [id,field] of [['markStart','clipStart'],['markEnd','clipEnd']])$(id).addEventListener('click',()=>{working[field]=Math.round(sourceElement.currentTime*10)/10;if(working.clipEnd<=working.clipStart)working.clipEnd=Math.min(app.asset(working.sourceId)?.duration||120,working.clipStart+5);drawSourceValues();changed();});
   function drawSourceValues(){$('clipStart').value=working.clipStart;$('clipEnd').value=working.clipEnd;$('startRange').value=working.clipStart;$('endRange').value=working.clipEnd;}
-  $('previewClip').addEventListener('click',()=>{const source=app.asset(working.sourceId),duration=working.clipEnd-working.clipStart;if(!source||duration<=0||working.clipEnd>source.duration){toast('请先选择有效的歌曲片段');return;}sourceElement.currentTime=working.clipStart;previewing=true;sourceElement.play().catch(()=>toast('当前文件不能试听，请换一个素材'));});
+  $('previewClip').addEventListener('click',()=>{const source=app.asset(working.sourceId),duration=working.clipEnd-working.clipStart;if(!source||duration<=0||working.clipEnd>source.duration){toast('请先选择有效的歌曲片段');return;}composition.pause();sourceElement.currentTime=working.clipStart;previewing=true;sourceElement.play().catch(()=>toast('当前文件不能试听，请换一个素材'));});
   for(const element of [$('sourceVideo'),$('sourceAudio')])element.addEventListener('timeupdate',()=>{if(previewing&&working&&element.currentTime>=working.clipEnd){element.pause();previewing=false;}});
+  for(const element of [$('sourceVideo'),$('sourceAudio')])element.addEventListener('play',()=>composition.pause());
   $('uploadSourceButton').addEventListener('click',()=>$('sourceFile').click());
   $('sourceFile').addEventListener('change',event=>{const file=event.target.files[0];if(!file)return;busy($('uploadSourceButton'),async()=>{toast('正在复制并读取歌曲素材……');const asset=await upload(file);if(!asset.hasAudio)throw new Error('这份素材没有声音，请选择歌曲或带声音的视频');await app.refresh(false);working.sourceId=asset.id;working.clipStart=0;working.clipEnd=Math.min(30,asset.duration);sourceOptions();drawSource();changed();toast('歌曲已导入，可以试听选段');}).finally(()=>event.target.value='');});
   $('generateScenes').addEventListener('click',()=>busy($('generateScenes'),async()=>{
@@ -128,6 +132,7 @@ export function initEditor(app){
     working.scenes.push({id:'s-'+crypto.randomUUID(),start,end,lyric:'',intent:'',assetId:'',offset:0});changed();drawScenes();
   });
   $('sceneList').addEventListener('click',event=>{
+    const preview=event.target.closest('[data-preview-scene]');if(preview){composition.showScene(preview.dataset.previewScene);return;}
     const remove=event.target.closest('[data-remove-scene]');if(remove){const previous=clone(working.scenes);working.scenes=working.scenes.filter(s=>s.id!==remove.dataset.removeScene);changed();drawScenes();toast('已移除这段画面',()=>{working.scenes=previous;changed();drawScenes();});}
     const importer=event.target.closest('[data-upload-scene]');if(importer){sceneUploadId=importer.dataset.uploadScene;$('sceneFile').click();}
   });
@@ -136,10 +141,10 @@ export function initEditor(app){
   $('importProjectOutput').addEventListener('click',()=>app.library.openImport(working.id));
   $('linkOutput').addEventListener('click',()=>busy($('linkOutput'),async()=>{if(!$('outputSelect').value)throw new Error('请先选择一条个人作品');const id=$('outputSelect').value;if(!(await ensureSaved()))return;working.outputWorkId=id;working.status='done';changed();await save();toast('成片已关联，这份需求已完成');}));
   $('projectSteps').addEventListener('click',event=>{const button=event.target.closest('[data-status]');if(!button||activeJob())return;if(button.dataset.status==='done'&&!working.outputWorkId){toast('请先导入或关联成片，再标记完成');return;}working.status=button.dataset.status;changed();draw();});
-  $('openRender').addEventListener('click',()=>busy($('openRender'),async()=>{if(!(await ensureSaved()))return;const issues=planIssues(working,app.data.assets);if(issues.length)throw new Error(issues.slice(0,3).join('；'));$('renderSummary').textContent=`《${working.song}》 · ${(working.clipEnd-working.clipStart).toFixed(2)}秒 · ${working.scenes.length}段画面`;$('renderSubtitles').disabled=!app.data.capabilities.subtitles;$('renderSubtitles').checked=app.data.capabilities.subtitles;$('renderDialog').showModal();}));
+  $('openRender').addEventListener('click',()=>busy($('openRender'),async()=>{if(!(await ensureSaved()))return;const issues=planIssues(working,app.data.assets);if(issues.length)throw new Error(issues.slice(0,3).join('；'));$('renderSummary').textContent=`《${working.song}》 · ${(working.clipEnd-working.clipStart).toFixed(2)}秒 · ${working.scenes.length}段画面`;$('renderSubtitles').disabled=!app.data.capabilities.subtitles;$('renderSubtitles').checked=app.data.capabilities.subtitles&&captionSettings(working).enabled;$('renderDialog').showModal();}));
   $('startRender').addEventListener('click',()=>busy($('startRender'),async()=>{await api('POST','/projects/'+working.id+'/render',{revision:working.revision,quality:$('renderQuality').value,subtitles:$('renderSubtitles').checked});$('renderDialog').close();await app.refresh();toast('已开始本机合成，进度会显示在这份需求里');}));
   $('editorJob').addEventListener('click',event=>{const button=event.target.closest('[data-cancel-job]');if(button)busy(button,async()=>{await api('POST','/jobs/'+button.dataset.cancelJob+'/cancel',{});await app.refresh();toast('合成已取消，方案和原素材仍保留');});});
   $('archiveProject').addEventListener('click',()=>busy($('archiveProject'),async()=>{if(!(await confirmAction('归档这份需求？','它会移到已归档列表，素材和成片都会保留，之后可以恢复。','归档需求')))return;const archived=await api('DELETE','/projects/'+working.id,{revision:working.revision});dirty=false;try{localStorage.removeItem(key(working.id));}catch{}await app.refresh(false);await app.navigate('board',true);toast('需求已归档',async()=>{await api('POST','/projects/'+archived.id+'/restore',{revision:archived.revision});await app.refresh();});}));
   window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
-  return {load,sync,save,ensureSaved,canLeave,setReference,drawJob,get current(){return working;},get dirty(){return dirty;},pause(){sourceElement.pause();previewing=false;}};
+  return {load,sync,save,ensureSaved,canLeave,setReference,drawJob,get current(){return working;},get dirty(){return dirty;},pause(){sourceElement.pause();composition.pause();previewing=false;}};
 }

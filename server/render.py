@@ -9,6 +9,7 @@ import threading
 
 from .media import HIDDEN, PROTOCOLS, FORMATS
 from .store import AppError, ident, now
+from .composition import caption_settings, visual_filter
 
 
 class Cancelled(Exception):
@@ -120,7 +121,7 @@ class Renderer:
                 asset=self.media.get(scene['assetId']); path=self.media.path(asset['id'])
                 length=scene['end']-scene['start']
                 inputs=['-loop','1','-framerate','30',*PROTOCOLS,*FORMATS,'-i',str(path)] if asset['kind']=='image' else ['-stream_loop','-1','-ss',str(scene.get('offset',0)),*PROTOCOLS,*FORMATS,'-i',str(path)]
-                filters=f'scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},setsar=1,fps=30,format=yuv420p'
+                filters=visual_filter(scene,width,height)
                 command=[*inputs,'-t',str(length),'-an','-vf',filters,'-c:v','libx264','-preset','veryfast','-crf','20','-threads','2','-y',f'{index:03}.mp4']
                 self._run(job_id,command,folder,length,5+65*scene['start']/duration,65*length/duration,f'正在配画面 {index+1}/{len(scenes)}')
             (folder/'concat.txt').write_text('\n'.join(f"file '{index:03}.mp4'" for index in range(len(scenes))),encoding='ascii')
@@ -128,7 +129,7 @@ class Renderer:
             source=self.media.path(project['sourceId'])
             command=['-i','joined.mp4','-ss',str(project['clipStart']),*PROTOCOLS,*FORMATS,'-i',str(source),'-map','0:v:0','-map','1:a:0','-t',str(duration)]
             if job['subtitles']:
-                self._subtitles(folder/'captions.ass',scenes,width,height)
+                self._subtitles(folder/'captions.ass',scenes,width,height,project.get('caption'))
                 command+=['-vf','subtitles=captions.ass','-c:v','libx264','-preset','veryfast','-crf','20','-threads','2']
             else:
                 command+=['-c:v','copy']
@@ -161,8 +162,9 @@ class Renderer:
                     shutil.rmtree(resolved)
 
     @staticmethod
-    def _subtitles(path,scenes,width,height):
-        font_size=round(width*.047)
+    def _subtitles(path,scenes,width,height,settings=None):
+        caption=caption_settings(settings)
+        font_size=round(width*caption["size"]/100)
         header=f'''[Script Info]
 ScriptType: v4.00+
 PlayResX: {width}
@@ -171,7 +173,7 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Microsoft YaHei,{font_size},&H00FFFFFF,&H000000FF,&H90000000,&H90000000,0,0,0,0,100,100,0,0,1,1.3,0,2,{round(width*.06)},{round(width*.06)},{round(height*.1)},1
+Style: Default,Microsoft YaHei,{font_size},&H00FFFFFF,&H000000FF,&H90000000,&H90000000,0,0,0,0,100,100,0,0,1,1.3,0,2,{round(width*.06)},{round(width*.06)},{round(height*caption["bottom"]/100)},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text

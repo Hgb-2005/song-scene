@@ -29,6 +29,6 @@ export function planIssues(project,assets) {
   return issues;
 }
 export function projectContent(p) {
-  const {song,singer,feeling,reference,status,sourceId,clipStart,clipEnd,scenes,outputWorkId,lyricDraft}=p;
-  return JSON.stringify({song,singer,feeling,reference,status,sourceId,clipStart,clipEnd,scenes,outputWorkId,lyricDraft});
+  const {song,singer,feeling,reference,status,sourceId,clipStart,clipEnd,scenes,outputWorkId,lyricDraft,caption}=p;
+  return JSON.stringify({song,singer,feeling,reference,status,sourceId,clipStart,clipEnd,scenes,outputWorkId,lyricDraft,caption});
 }

@@ -1,0 +1,33 @@
+{
+  "sourceSha256": "b767400ab035ee9aa9659753a58f3ecb2348ef37dd469d23b9711106b05c7de2",
+  "previewSha256": "235062dc26f9db580d1a965a159dd6a674c0b2f6791eb932822e09502f5a511f",
+  "encoding": [
+    "-vf",
+    "scale=540:960:flags=lanczos",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "medium",
+    "-crf",
+    "23",
+    "-maxrate",
+    "1600k",
+    "-bufsize",
+    "3200k",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "128k",
+    "-movflags",
+    "+faststart"
+  ],
+  "fullDecodeZeroErrors": true,
+  "duration": 30.433333,
+  "width": 540,
+  "height": 960,
+  "fps": 30,
+  "previewBytes": 3038682,
+  "hdBytes": 17837085
+}
